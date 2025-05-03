@@ -1,0 +1,6 @@
+train: D:\THIEN_PROJECT\person_detection\datasets\images\train
+val: D:\THIEN_PROJECT\person_detection\datasets\images\val
+
+nc: 1
+names: ['person']
+
