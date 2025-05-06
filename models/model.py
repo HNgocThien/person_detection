@@ -1,4 +1,4 @@
 from ultralytics import YOLO
 
 # Load a model
-model = YOLO("yolo11n-seg.pt")  # load an official model
+model = YOLO("yolov8n.pt")  # load an official model
