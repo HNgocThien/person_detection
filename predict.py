@@ -4,12 +4,12 @@ from ultralytics import YOLO
 import sys
 
 # Configuration
-MODEL_PATH = r"D:\THIEN_PROJECT\person_detection\models\yolov8n.pt"  # Path to YOLOv8n model
-DEFAULT_VIDEO_PATH = r"D:\THIEN_PROJECT\person_detection\sample_video.mp4"  # Default video path
-DEFAULT_IMAGE_PATH = r"D:\THIEN_PROJECT\person_detection\datasets\images\train\000000000077.jpg"  # Default image path
-INPUT_TYPE = "image"  # Options: "webcam", "video", "image"
+MODEL_PATH = r"D:\THIEN_PROJECT\person_detection\models\best.pt"  # Path to model
+DEFAULT_VIDEO_PATH = r"D:\THIEN_PROJECT\person_detection\datasets\images\test\6676749170347.mp4"  # Default video path
+DEFAULT_IMAGE_PATH = r"D:\THIEN_PROJECT\person_detection\datasets\images\test\z6676591869971_e6e2ccb0404b4ef1b98f7a6f84d0275a.jpg"  # Default image path
+INPUT_TYPE = "video"  # Options: "webcam", "video", "image"
 
-# Load YOLOv8n model
+# Load model
 model = YOLO(MODEL_PATH)
 
 # Define class names (COCO dataset, class 0 is 'person')
