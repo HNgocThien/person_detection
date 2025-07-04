@@ -4,14 +4,15 @@ FROM python:3.9-slim
 # Thiết lập thư mục làm việc trong container
 WORKDIR /app
 
-# Sao chép file requirements.txt vào container
+# Sao chép file requirements.txt vào container trước để tận dụng cache
 COPY requirements.txt .
 
-# Cài đặt các thư viện cần thiết
-RUN pip install --no-cache-dir -r requirements.txt
+# Cài đặt các thư viện cần thiết (tăng timeout nếu mạng yếu)
+RUN pip install --default-timeout=200 --no-cache-dir -r requirements.txt
 
-# Sao chép toàn bộ mã nguồn vào container
-COPY . .
+# Sao chép các file/thư mục cần thiết vào container
+COPY app.py .
+COPY models/ models/
 
 # Expose cổng 8501 để chạy ứng dụng Streamlit
 EXPOSE 8501
