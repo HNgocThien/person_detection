@@ -1,3 +1,4 @@
+import time
 import cv2
 import numpy as np
 from ultralytics import YOLO
@@ -5,7 +6,7 @@ import sys
 
 # Configuration
 MODEL_PATH = r"D:\THIEN_PROJECT\person_detection\models\best.pt"  # Path to model
-DEFAULT_VIDEO_PATH = r"D:\THIEN_PROJECT\person_detection\datasets\images\test\6676749170347.mp4"  # Default video path
+DEFAULT_VIDEO_PATH = r"rtsp://akacamai:fpt12345@103.176.147.25:8554/camera_146"  # Default video path
 DEFAULT_IMAGE_PATH = r"D:\THIEN_PROJECT\person_detection\datasets\images\test\z6676591869971_e6e2ccb0404b4ef1b98f7a6f84d0275a.jpg"  # Default image path
 INPUT_TYPE = "video"  # Options: "webcam", "video", "image"
 
@@ -15,33 +16,65 @@ model = YOLO(MODEL_PATH)
 # Define class names (COCO dataset, class 0 is 'person')
 class_names = model.names
 
+# Định nghĩa polygon vùng cảnh báo (theo thứ tự các điểm)
+ALERT_POLYGON = np.array([
+    [724, 507],
+    [684, 994],
+    [1297, 951],
+    [1161, 465]
+], np.int32)
+
+def is_in_polygon(bbox_center, polygon):
+    return cv2.pointPolygonTest(polygon, bbox_center, False) >= 0
+
 # Function to process frame and draw bounding boxes
 def process_frame(frame):
-    # Perform inference
+    # Vẽ vùng cảnh báo
+    cv2.polylines(frame, [ALERT_POLYGON], isClosed=True, color=(0, 0, 255), thickness=3)
+
+    # ĐO THỜI GIAN INFERENCE
+    start_time = time.perf_counter()
     results = model(frame)[0]
-    
-    # Initialize person count
+    infer_time = (time.perf_counter() - start_time) * 1000  # ms
+
     person_count = 0
-    
-    # Process detection results
+    alert = False
+
     for result in results.boxes.data.tolist():
         x1, y1, x2, y2, conf, cls = result
         x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
         cls = int(cls)
-        
-        # Only process 'person' class (class ID 0 in COCO)
-        if cls == 0:
+
+        if cls == 0:  # Chỉ quan tâm class 'person'
             person_count += 1
-            # Draw bounding box and label
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            # Tính tâm bbox
+            center = ((x1 + x2) // 2, (y1 + y2) // 2)
+            # Kiểm tra có nằm trong vùng cảnh báo không
+            if is_in_polygon(center, ALERT_POLYGON):
+                color = (0, 0, 255)  # Đỏ
+                alert = True
+            else:
+                color = (0, 255, 0)  # Xanh lá
+
+            # Vẽ bbox và tâm
+            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
             label = f"{class_names[cls]}: {conf:.2f}"
-            cv2.putText(frame, label, (x1, y1 - 10), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-    
-    # Display person count on frame
-    cv2.putText(frame, f"People: {person_count}", (10, 30), 
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-    
+            cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+            cv2.circle(frame, center, 5, color, -1)
+
+    # Hiển thị cảnh báo nếu có người vào vùng đỏ
+    if alert:
+        cv2.putText(frame, "CANH BAO: Co nguoi vao vung do!", (10, 60),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
+    # Hiển thị số người
+    cv2.putText(frame, f"People: {person_count}", (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255) if alert else (0, 255, 0), 2)
+    # Hiển thị thời gian inference
+    cv2.putText(frame, f"Infer: {infer_time:.1f} ms", (10, 90),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 0), 2)
+    # Log ra console
+    print(f"Inference time: {infer_time:.1f} ms, People: {person_count}, Alert: {alert}")
+
     return frame, person_count
 
 # Function to list available devices
@@ -112,7 +145,8 @@ def main(input_source=0, backends=[cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_FFMPEG])
         
         # Process and display image
         processed_frame, person_count = process_frame(frame)
-        cv2.imshow("YOLOv8 Person Detection", processed_frame)
+        display_frame = cv2.resize(processed_frame, (960, 540))
+        cv2.imshow("YOLOv8 Person Detection", display_frame)
         print(f"Detected {person_count} people in the image.")
         cv2.waitKey(0)  # Wait until a key is pressed
         cv2.destroyAllWindows()
@@ -125,17 +159,15 @@ def main(input_source=0, backends=[cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_FFMPEG])
         if not ret:
             print("Error: Could not read frame. Check webcam or video source.")
             break
-        
-        # Process frame and get person count
+
         processed_frame, person_count = process_frame(frame)
-        
-        # Display the frame
-        cv2.imshow("YOLOv8 Person Detection", processed_frame)
-        
-        # Print person count to console
+
+        # Resize frame trước khi hiển thị
+        display_frame = cv2.resize(processed_frame, (960, 540))
+        cv2.imshow("YOLOv8 Person Detection", display_frame)
+
         print(f"Detected {person_count} people in frame.")
-        
-        # Break loop on 'q' key press
+
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     
