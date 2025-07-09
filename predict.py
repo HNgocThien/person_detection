@@ -154,23 +154,37 @@ def main(input_source=0, backends=[cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_FFMPEG])
         return
     
     # Process video or webcam
+    frame_idx = 0  # Thêm biến đếm frame
+    fps_counter = 0
+    fps_start_time = time.time()
+
     while True:
         ret, frame = cap.read()
         if not ret:
             print("Error: Could not read frame. Check webcam or video source.")
             break
 
-        processed_frame, person_count = process_frame(frame)
+        # Chỉ xử lý frame chẵn
+        if frame_idx % 2 == 0:
+            processed_frame, person_count = process_frame(frame)
 
-        # Resize frame trước khi hiển thị
-        display_frame = cv2.resize(processed_frame, (960, 540))
-        cv2.imshow("YOLOv8 Person Detection", display_frame)
+            # Resize frame trước khi hiển thị
+            display_frame = cv2.resize(processed_frame, (960, 540))
+            cv2.imshow("YOLOv8 Person Detection", display_frame)
 
-        print(f"Detected {person_count} people in frame.")
+            print(f"Detected {person_count} people in frame.")
 
+        frame_idx += 1  # Tăng biến đếm frame
+        fps_counter += 1
+        # Tính FPS
+        current_time = time.time()
+        if current_time - fps_start_time >= 1.0:
+            print(f"FPS: {fps_counter} frame/s")
+            fps_counter = 0
+            fps_start_time = current_time
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-    
+
     # Release resources
     cap.release()
     cv2.destroyAllWindows()
